@@ -27,14 +27,12 @@ public:
 
 void swap_lock(Data& d1, Data& d2) {
 	Data tmp;
-	d1.m.lock();
-	d2.m.lock();
+	std::lock(d1.m, d2.m);
+	std::lock_guard<std::mutex> lk1 (d1.m, std::adopt_lock);
+	std::lock_guard<std::mutex> lk2 (d2.m, std::adopt_lock);
 	tmp = d1;
 	d1 = d2;
 	d2 = tmp;
-	d1.m.unlock();
-	d2.m.unlock();
-	
 }
 
 void swap_scoped(Data& d1, Data& d2) {
@@ -48,11 +46,11 @@ void swap_scoped(Data& d1, Data& d2) {
 
 void swap_unique(Data& d1, Data& d2) {
 	Data tmp;
-	std::unique_lock<std::mutex> ul1(d1.m );
-	std::unique_lock<std::mutex> ul2 (d2.m );
+	std::unique_lock<std::mutex> ul1(d1.m, std::defer_lock);
+	std::unique_lock<std::mutex> ul2 (d2.m, std::defer_lock);
+	std::lock(ul1, ul2);
 	tmp = d1;
 	d1 = d2;
-	ul1.unlock();
 	d2 = tmp;
 
 }
@@ -62,9 +60,9 @@ int main() {
 	Data d2{ 10, 20, "Second" };
 	d1.print();
 	d2.print();
-	std::thread t( swap_lock, std::ref(d1), std::ref(d2) );
+	//std::thread t( swap_lock, std::ref(d1), std::ref(d2) );
 	//std::thread t(swap_scoped, std::ref(d1), std::ref(d2));
-	//std::thread t(swap_unique, std::ref(d1), std::ref(d2));
+	std::thread t(swap_unique, std::ref(d1), std::ref(d2));
 	std::this_thread::sleep_for(2ms);
 	d1.print();
 	d2.print();
